@@ -23,7 +23,7 @@ OC.L10N.register(
     "Queued content update actions: {count}" : "Aktualizácie obsahu v čakajúcich akciách: {count}",
     "Locked queue content update actions: {count}" : "Akcie aktualizácie obsahu uzamknutého frontu: {count}",
     "Queued file system events: {count}" : "Udalosti v poradí súborového systému:: {count}",
-    "Download Logs" : "Stiahnuť Logy",
+    "Download Logs" : "Stiahnuť protokoly",
     "Download the PHP App logs" : "Stiahnite si logy aplikácie PHP",
     "Download the Ex-App Backend logs" : "Stiahnite si logy Ex-App Backend",
     "Official documentation" : "Oficiálna dokumentácia",
