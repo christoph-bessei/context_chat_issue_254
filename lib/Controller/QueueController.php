@@ -30,6 +30,7 @@ use OCP\AppFramework\Services\IAppConfig;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\IJobList;
 use OCP\DB\Exception;
+use OCP\Files\Config\ICachedMountInfo;
 use OCP\Files\Config\IUserMountCache;
 use OCP\Files\File;
 use OCP\Files\IRootFolder;
@@ -96,7 +97,6 @@ class QueueController extends OCSController {
 	#[ExAppRequired]
 	#[ApiRoute(verb: 'GET', url: '/queues/documents/')]
 	public function getDocumentsQueueItems(
-		StorageService $storageService,
 		IRootFolder $rootFolder,
 		QueueMapper $queueMapper,
 		QueueContentItemMapper $queueContentItemMapper,
@@ -122,7 +122,7 @@ class QueueController extends OCSController {
 				foreach ($documents as $document) {
 					if ($queueMapper->lock($document->getId())) {
 						try {
-							$files[$document->getId()] = $this->getFileSource($document, $rootFolder, $storageService, $userMountCache);
+							$files[$document->getId()] = $this->getFileSource($document, $rootFolder, $userMountCache);
 						} catch (\Exception $e) {
 							$this->logger->warning($e->getMessage(), ['exception' => $e]);
 							$queueMapper->delete($document);
@@ -285,18 +285,18 @@ class QueueController extends OCSController {
 		}
 	}
 
-	private function getFileSource(QueueFile $document, IRootFolder $rootFolder, StorageService $storageService, IUserMountCache $userMountCache) : Source {
-		$mounts = $userMountCache->getMountsForStorageId($document->getStorageId());
+	private function getFileSource(QueueFile $document, IRootFolder $rootFolder, IUserMountCache $userMountCache) : Source {
+		$mounts = $userMountCache->getMountsForFileId($document->getFileId());
 		if (empty($mounts)) {
-			throw new \Exception('Couldn\'t find any mounts for this storage');
+			throw new \Exception('Couldn\'t find any mounts for this file');
 		}
+		$userIds = array_map(static fn (ICachedMountInfo $mount) => $mount->getUser()->getUID(), $mounts);
 		$file = null;
-		foreach ($mounts as $mount) {
-			$userId = $mount->getUser()->getUID();
+		foreach ($userIds as $userId) {
 			try {
 				$file = $rootFolder->getUserFolder($userId)->getFirstNodeById($document->getFileId());
 			} catch (NotPermittedException $e) {
-				throw new \Exception('Not allowed to get user folder');
+				continue;
 			}
 			if ($file instanceof File) {
 				break;
@@ -305,7 +305,6 @@ class QueueController extends OCSController {
 		if (!($file instanceof File)) {
 			throw new \Exception('File not found or not a file');
 		}
-		$userIds = $storageService->getUsersForFileId($document->getFileId());
 
 		return new Source(
 			$userIds,
